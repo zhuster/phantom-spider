@@ -86,7 +86,6 @@ public class SearchServiceImpl implements SearchService {
      */
     @Override
     public SearchResult simpleSearch(SearchContentType searchContentType, String content) {
-        String content1 = "环境";
         ChromeDriver driver = new ChromeDriver();
         WebDriver.Timeouts timeouts = driver.manage().timeouts();
         timeouts.pageLoadTimeout(10, TimeUnit.SECONDS);
@@ -98,7 +97,7 @@ public class SearchServiceImpl implements SearchService {
             driver.findElementByLinkText(e).click();
             log.info("查询类型：{} 内容：{}", e, content);
         });
-        driver.findElementById("txt_SearchText").sendKeys(content1);
+        driver.findElementById("txt_SearchText").sendKeys(content);
         driver.findElementByClassName("search-btn").click();
         SearchResult searchResult = null;
         try {

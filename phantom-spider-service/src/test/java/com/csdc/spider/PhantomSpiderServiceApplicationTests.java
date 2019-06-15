@@ -103,7 +103,7 @@ public class PhantomSpiderServiceApplicationTests {
     public void downloadTest(){
         String url = "http://kns.cnki.net/kns/download.aspx?filename=Fc3UjVZRDOsBzR6BjazoXcSVGN6hFMVlWSjJUNoFVVwk2SiV3UIR1Z5gnbxo2d2d3K6FlNsR0cwI0dStGVmZlR=0TPBRXQo5kahplVP9GWxgFWkFnWYhnYChjdrZWQ05mSqplYjBnWTJlbt1UbnF3ToZmNSlUNnFFTZhHWyBVUyA&tablename=CCNDCOMMIT_DAY";
         url = URL.encode(url);
-        searchService.getDownloadResponseEntity(url);
+        searchService.getDownloadResponse(url);
     }
 
 }
