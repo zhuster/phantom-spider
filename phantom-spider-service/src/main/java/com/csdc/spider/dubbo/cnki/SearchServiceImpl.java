@@ -57,12 +57,11 @@ import static com.csdc.spider.util.ConfigConsts.TMP_HTML_LOCATION;
  * @since <pre>2019/5/29</pre>
  */
 @Slf4j
-@org.apache.dubbo.config.annotation.Service(group = "cnki")
+@org.apache.dubbo.config.annotation.Service(group = "cnki", version = "1.0.1")
 @Service
 public class SearchServiceImpl implements SearchService {
 
-//    private static CountDownLatch latch = new CountDownLatch(1);
-//    private ThreadPoolExecutor pool = new ThreadPoolExecutor(3, 5, 5, TimeUnit.MINUTES, new LinkedBlockingDeque());
+
     private static Lock lock = new ReentrantLock();
     private static Lock pageLock = new ReentrantLock();
     private static final ThreadLocal<CookieStore> COOKIE_STORE_THREAD_LOCAL = new ThreadLocal<>();
@@ -166,7 +165,10 @@ public class SearchServiceImpl implements SearchService {
         Optional<Element> chDivSummary = Optional.ofNullable(doc.getElementById("ChDivSummary"));
         chDivSummary.map(Element::text).ifPresent(paper::setSummary);
         Optional<Element> keyword = Optional.ofNullable(doc.getElementById("catalog_KEYWORD"));
-        keyword.map(Element::text).ifPresent(paper::setKeyword);
+        keyword.map(Element::nextElementSiblings).ifPresent(elements->{
+            Optional<String> res = elements.stream().map(Element::text).reduce((x, y) -> x + y);
+            paper.setKeyword(res.get());
+        });
         //中文分类号
         Optional<Element> ztcls = Optional.ofNullable(doc.getElementById("catalog_ZTCLS"));
         ztcls.map(Element::parent).map(Element::ownText).ifPresent(paper::setZtcls);

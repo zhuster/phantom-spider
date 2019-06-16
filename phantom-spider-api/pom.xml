@@ -11,5 +11,18 @@
 
     <artifactId>phantom-spider-api</artifactId>
 
+   <!--部署私服配置-->
+    <distributionManagement>
+        <repository>
+            <id>csdc</id>
+            <name>csdc</name>
+            <url>http://192.168.88.102:8081/repository/csdc/</url>
+        </repository>
+        <snapshotRepository>
+            <id>csdc-snapshots</id>
+            <name>csdc-snapshots</name>
+            <url>http://192.168.88.102:8081/repository/csdc-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
 
 </project>

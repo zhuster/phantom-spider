@@ -121,4 +121,25 @@
         </dependency>
     </dependencies>
 
+    <repositories>
+        <repository>
+           <id>central</id>
+            <name>Maven Central</name>
+            <url>https://maven.aliyun.com/repository/central</url>
+        </repository>
+
+        <!--私服-->
+        <repository>
+            <id>csdc</id>
+            <name>csdc</name>
+            <url>http://192.168.88.102:8081/repository/csdc</url>
+        </repository>
+        <repository>
+            <id>csdc-snapshots</id>
+            <name>csdc-snapshots</name>
+            <url>http://192.168.88.102:8081/repository/csdc-snapshots</url>
+        </repository>
+    </repositories>
+
+
 </project>

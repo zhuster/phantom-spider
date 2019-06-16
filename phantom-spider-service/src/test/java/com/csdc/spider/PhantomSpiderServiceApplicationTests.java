@@ -88,7 +88,7 @@ public class PhantomSpiderServiceApplicationTests {
 
     @Test
     public void findPaperInfoTest(){
-        Paper paperInfo = searchService.findPaperInfo("http://kns.cnki.net/kns/detail/detail.aspx?QueryID=0&CurRec=133&recid=&FileName=XTBR201906050040&DbName=CCNDPREP&DbCode=CCND&yx=&pr=&URLID=&bsm=");
+        Paper paperInfo = searchService.findPaperInfo("http://kns.cnki.net/kns/detail/detail.aspx?QueryID=0&CurRec=1&recid=&FileName=KXTS20190612008&DbName=CAPJLAST&DbCode=CJFQ&yx=Y&pr=&URLID=11.5602.TP.20190613.1650.007&bsm=");
         System.out.println(paperInfo);
     }
 
