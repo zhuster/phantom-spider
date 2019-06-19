@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.time.LocalDate;
 
 /**
  * 高级检索条件
@@ -35,8 +34,8 @@ public class AdvancedSearchCondition implements Serializable {
     private DegreeEnum searchAuthorDegree;
     private String authorCompany;
     private DegreeEnum searchAuthorCompanyDegree;
-    private LocalDate publishDateFrom;
-    private LocalDate publishDateTo;
+    private String publishDateFrom;
+    private String publishDateTo;
     private UpdateTimeEnum updateTime;
     private String source;
     private DegreeEnum searchSourceDegree;

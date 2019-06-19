@@ -6,5 +6,6 @@ package com.csdc.spider.enumeration.error;
  */
 public enum SearchError {
     COOKIE_HAS_EXPIRED,
-    NO_PAPERS
+    NO_PAPERS,
+    REQUEST_TOO_MUCH
 }

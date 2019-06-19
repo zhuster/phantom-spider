@@ -1,9 +1,7 @@
 package com.csdc.spider.service;
 
 import com.csdc.spider.enumeration.*;
-import com.csdc.spider.enumeration.error.SearchError;
 import com.csdc.spider.exception.NullEntityException;
-import com.csdc.spider.exception.SearchingException;
 import com.csdc.spider.model.*;
 import com.csdc.spider.util.CNKIConsts;
 import lombok.extern.slf4j.Slf4j;
@@ -21,10 +19,11 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author zhangzhi
@@ -34,6 +33,8 @@ import java.util.*;
 @Service
 public class CommonService {
 
+    @Autowired
+    ParsingService parsingService;
 
     /**
      * 提取文章条目信息
@@ -43,21 +44,24 @@ public class CommonService {
     public SearchResult extractSearchResult(ChromeDriver driver) throws InterruptedException {
         driver.switchTo().frame("iframeResult");
         // 50 entries each page
-        new WebDriverWait(driver,2).until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"id_grid_display_num\"]/a[3]")));
+        new WebDriverWait(driver, 2).until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"id_grid_display_num\"]/a[3]")));
         WebElement fiftyElement = driver.findElementByXPath("//*[@id=\"id_grid_display_num\"]/a[3]");
         driver.executeScript("arguments[0].click()", fiftyElement);
+        String pageSource = driver.getPageSource();
+//      下面代码用selenium提取页面信息效率很低
+/*        String currentUrl = driver.getCurrentUrl();
+        System.out.println("current-url--->"+currentUrl);
+
         WebElement paperTitleCell = driver.findElementByXPath("//*[@id=\"ctl00\"]/table/tbody/tr[3]/td/table/tbody/tr/td/div/div");
         String rawNum = paperTitleCell.getText();
         SearchResult searchResult = new SearchResult();
-        int totalNum = specifyTotalNum(rawNum);
+        int totalNum = parsingService.specifyTotalNum(rawNum);
         searchResult.setTotal(totalNum);
         if (totalNum > 50) {
             String nextPageLink = findNextPageLink(driver);
             searchResult.setNextPageLink(nextPageLink);
         }
-//        CountDownLatch latch = new CountDownLatch(pageNums);
         List<Entry> entries = new ArrayList<>();
-//        for (; pageNums > 0; --pageNums) {
         WebElement body = driver.findElement(By.xpath("//*[@id=\"ctl00\"]/table/tbody/tr[2]/td/table/tbody"));
         List<WebElement> trs = body.findElements(By.tagName("tr"));
         trs.remove(0);
@@ -72,30 +76,11 @@ public class CommonService {
             }
             entries.add(entry);
         });
-        searchResult.setEntries(entries);
-//            if (pageNums > 1) {
-//                driver.findElementById("Page_next").click();
-//            }
-//            latch.countDown();
-//        }
-//        latch.await();
+        searchResult.setEntries(entries);*/
+        SearchResult searchResult = parsingService.parseHtml(pageSource);
         return searchResult;
     }
 
-    /**
-     * 提取查询到的总条数信息
-     *
-     * @param rawNum 含有总条数信息的文本
-     */
-    private int specifyTotalNum(String rawNum) {
-        if (StringUtils.isEmpty(rawNum)) {
-            throw new SearchingException(SearchError.NO_PAPERS);
-        }
-        String truncatedNum = rawNum.substring(4, rawNum.length() - 5);
-        String num = truncatedNum.replaceAll(",", "");
-        int total = Integer.parseInt(num);
-        return total;
-    }
 
     /**
      * 查找到下一页的链接
@@ -309,10 +294,10 @@ public class CommonService {
             String code = e.getCode();
             select.selectByVisibleText(code);
         });
-        Optional<LocalDate> publishDateFrom = Optional.ofNullable(condition.getPublishDateFrom());
-        publishDateFrom.ifPresent(e -> driver.findElementById("publishdate_from").sendKeys(e.toString()));
-        Optional<LocalDate> publishDateTo = Optional.ofNullable(condition.getPublishDateTo());
-        publishDateTo.ifPresent(e -> driver.findElementById("publishdate_to").sendKeys(e.toString()));
+        Optional<String> publishDateFrom = Optional.ofNullable(condition.getPublishDateFrom());
+        publishDateFrom.ifPresent(e -> driver.findElementById("publishdate_from").sendKeys(e));
+        Optional<String> publishDateTo = Optional.ofNullable(condition.getPublishDateTo());
+        publishDateTo.ifPresent(e -> driver.findElementById("publishdate_to").sendKeys(e));
         Optional<UpdateTimeEnum> updateTime = Optional.ofNullable(condition.getUpdateTime());
         updateTime.ifPresent(e -> {
             String code = e.getCode();
@@ -434,7 +419,7 @@ public class CommonService {
                     case 7:
                         Element downloadElement = children.get(i);
                         if (downloadElement.children().isEmpty()) {
-                            log.debug("文章{}缺失下载信息",entry.getId());
+                            log.debug("文章{}缺失下载信息", entry.getId());
                             break;
                         }
                         Element child = downloadElement.child(0);
@@ -449,5 +434,20 @@ public class CommonService {
             entries.add(entry);
         });
         return entries;
+    }
+
+    /**
+     * 根据用户ID存储或者更新响应的cookie当容量超过256时清空cookie
+     *
+     * @param driver
+     * @param cookieCache
+     * @param accountId
+     */
+    public void handleCookie(WebDriver driver, ConcurrentHashMap<Integer, CookieStore> cookieCache, int accountId) {
+        if (cookieCache.size() > 256) {
+            cookieCache.clear();
+        }
+        CookieStore cookieStore = getCookieStore(driver);
+        cookieCache.put(accountId, cookieStore);
     }
 }

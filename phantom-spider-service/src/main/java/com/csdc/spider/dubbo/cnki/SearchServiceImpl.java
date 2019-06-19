@@ -6,19 +6,25 @@ import com.csdc.spider.enumeration.FileType;
 import com.csdc.spider.enumeration.SearchContentType;
 import com.csdc.spider.enumeration.error.SearchError;
 import com.csdc.spider.exception.SearchingException;
-import com.csdc.spider.model.*;
+import com.csdc.spider.model.AdvancedSearchCondition;
+import com.csdc.spider.model.Binding;
+import com.csdc.spider.model.Paper;
+import com.csdc.spider.model.SearchResult;
 import com.csdc.spider.service.CommonService;
+import com.csdc.spider.service.ParsingService;
 import com.csdc.spider.util.CNKIConsts;
+import com.csdc.spider.util.ConfigConsts;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
-import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -31,10 +37,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URLDecoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,8 +45,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -51,7 +54,7 @@ import static com.csdc.spider.util.ConfigConsts.TMP_HTML_LOCATION;
 
 /**
  * 知网检索与条件检索服务端实现
- * <note>在消费端调用服务端接口方法的时候入参必须进行充分验证，服务端不再进行验证</note>
+ * Note：在消费端调用服务端接口方法的时候入参必须进行充分验证，服务端不再进行验证
  *
  * @author zhangzhi
  * @since <pre>2019/5/29</pre>
@@ -63,16 +66,18 @@ public class SearchServiceImpl implements SearchService {
 
 
     private static Lock lock = new ReentrantLock();
-    private static Lock pageLock = new ReentrantLock();
-    private static final ThreadLocal<CookieStore> COOKIE_STORE_THREAD_LOCAL = new ThreadLocal<>();
-    private static AtomicReference<CookieStore> simpleCookieStore = new AtomicReference<>();
+    private static ConcurrentHashMap<Integer, CookieStore> cookieCache = new ConcurrentHashMap<>(256);
+    private static ConcurrentHashMap<Integer, String> referLink = new ConcurrentHashMap<>(256);
+    private static CloseableHttpClient client = null;
 
 
     @Autowired
     CommonService commonService;
+    @Autowired
+    ParsingService parsingService;
 
     static {
-        System.setProperty("webdriver.chrome.driver", "D:\\chromedriver\\chromedriver.exe");
+        System.setProperty("webdriver.chrome.driver", ConfigConsts.CHROME_DRIVER_LOCATION);
     }
 
 
@@ -84,7 +89,7 @@ public class SearchServiceImpl implements SearchService {
      * @param content           输入内容
      */
     @Override
-    public SearchResult simpleSearch(SearchContentType searchContentType, String content) {
+    public SearchResult simpleSearch(SearchContentType searchContentType, String content, int accountId) {
         ChromeDriver driver = new ChromeDriver();
         WebDriver.Timeouts timeouts = driver.manage().timeouts();
         timeouts.pageLoadTimeout(10, TimeUnit.SECONDS);
@@ -105,13 +110,11 @@ public class SearchServiceImpl implements SearchService {
             log.error("解析查询结果失败");
             e.printStackTrace();
         } finally {
-            CookieStore cookieStore = commonService.getCookieStore(driver);
-            CookieStore oldCookieStore = simpleCookieStore.get();
-            simpleCookieStore.compareAndSet(oldCookieStore, cookieStore);
+            commonService.handleCookie(driver, cookieCache, accountId);
             driver.quit();
         }
         if (Objects.isNull(searchContentType)) {
-            log.info("查询类型：主题 查询内容：{}", content);
+            log.info("进行知网初级检索，查询类型：主题 查询内容：{}", content);
         }
         return searchResult;
     }
@@ -165,7 +168,7 @@ public class SearchServiceImpl implements SearchService {
         Optional<Element> chDivSummary = Optional.ofNullable(doc.getElementById("ChDivSummary"));
         chDivSummary.map(Element::text).ifPresent(paper::setSummary);
         Optional<Element> keyword = Optional.ofNullable(doc.getElementById("catalog_KEYWORD"));
-        keyword.map(Element::nextElementSiblings).ifPresent(elements->{
+        keyword.map(Element::nextElementSiblings).ifPresent(elements -> {
             Optional<String> res = elements.stream().map(Element::text).reduce((x, y) -> x + y);
             paper.setKeyword(res.get());
         });
@@ -176,13 +179,19 @@ public class SearchServiceImpl implements SearchService {
         Optional<Element> cajDown = Optional.ofNullable(doc.getElementById("cajDown"));
         cajDown.ifPresent(e -> {
             String cajDownloadLink = e.attr("href");
-            Binding<FileType, String> cajBinding = new Binding<>(FileType.CAJ, cajDownloadLink);
+            if (!cajDownloadLink.contains(CNKIConsts.CNKI_HOME)) {
+                cajDownloadLink = CNKIConsts.CNKI_HOME + cajDownloadLink;
+            }
+            Binding<FileType, String> cajBinding = new Binding<>(FileType.CAJ, cajDownloadLink.trim());
             downloadInfo.add(cajBinding);
         });
         Optional<Element> pdfDown = Optional.ofNullable(doc.getElementById("pdfDown"));
         pdfDown.ifPresent(e -> {
             String pdfDownloadLink = e.attr("href");
-            Binding<FileType, String> pdfBinding = new Binding<>(FileType.PDF, pdfDownloadLink);
+            if (!pdfDownloadLink.contains(CNKIConsts.CNKI_HOME)) {
+                pdfDownloadLink = CNKIConsts.CNKI_HOME + pdfDownloadLink;
+            }
+            Binding<FileType, String> pdfBinding = new Binding<>(FileType.PDF, pdfDownloadLink.trim());
             downloadInfo.add(pdfBinding);
         });
         paper.setDownloadInfo(downloadInfo);
@@ -195,7 +204,7 @@ public class SearchServiceImpl implements SearchService {
      * @param downloadLink
      */
     @Override
-    public HttpResponse getDownloadResponse(String downloadLink) {
+    public InputStream getDownloadResource(String downloadLink) {
         try {
             downloadLink = URLDecoder.decode(downloadLink, "UTF-8");
         } catch (UnsupportedEncodingException e) {
@@ -214,23 +223,27 @@ public class SearchServiceImpl implements SearchService {
         }
         HttpGet httpGet = new HttpGet(downloadLink);
         httpGet.setConfig(requestConfig);
-        ResponseHandler<HttpResponse> responseHandler = httpResponse -> {
+        ResponseHandler<InputStream> responseHandler = httpResponse -> {
             int statusCode = httpResponse.getStatusLine().getStatusCode();
             //have enabled redirect
             if (statusCode >= 300) {
                 log.error("请求下载失败，响应状态码为{}", statusCode);
                 throw new ClientProtocolException("Unexpected response status: " + statusCode);
             }
-            return httpResponse;
+            HttpEntity entity = httpResponse.getEntity();
+            if (entity.isStreaming()) {
+                return entity.getContent();
+            }
+            return null;
         };
-        HttpResponse response = null;
+        InputStream inputStream = null;
         try (CloseableHttpClient client = HttpClients.createDefault()) {
-            response = client.execute(httpGet, responseHandler);
+            inputStream = client.execute(httpGet, responseHandler);
         } catch (IOException e) {
             e.printStackTrace();
         }
         log.info("获取响应资源成功");
-        return response;
+        return inputStream;
     }
 
     /**
@@ -259,65 +272,50 @@ public class SearchServiceImpl implements SearchService {
         return searchResult;
     }
 
+    /**
+     * 根据链接和账户id获取下一页的查询内容
+     *
+     * @param pageLink
+     * @param accountId
+     */
     @Override
-    public SearchResult getEntriesByPageLink(String pageLink) {
+    public SearchResult getEntriesByPageLink(String pageLink, int accountId) {
         try {
             pageLink = URLDecoder.decode(pageLink, "UTF-8");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        CookieStore cookieStore = simpleCookieStore.get();
-        RequestConfig requestConfig = RequestConfig.custom()
-                .setProxy(new HttpHost(CNKIConsts.CNKI_HOST))
+        CookieStore cookieStore = cookieCache.get(accountId);
+        RequestConfig globalConfig = RequestConfig.custom()
+                .setCookieSpec(CookieSpecs.STANDARD)
                 .build();
+        HttpClientContext context = HttpClientContext.create();
+        context.setCookieStore(cookieStore);
         HttpGet httpGet = new HttpGet(pageLink);
-        httpGet.setHeader("Referer", CNKIConsts.REFERER);
+        httpGet.setHeader("Referer", referLink.getOrDefault(accountId, CNKIConsts.REFERER));
+        if (referLink.size() > 256) {
+            referLink.clear();
+        }
+        referLink.put(accountId, pageLink);
         String resultHtml = null;
-        try (CloseableHttpClient client = HttpClients.custom()
-                .setDefaultCookieStore(cookieStore)
-                .setDefaultRequestConfig(requestConfig)
-                .build();
-             CloseableHttpResponse response = client.execute(httpGet)) {
+        if (client == null) {
+            client = HttpClients.custom()
+                    .setDefaultCookieStore(cookieStore)
+                    .setDefaultRequestConfig(globalConfig)
+                    .setProxy(new HttpHost(CNKIConsts.CNKI_HOST))
+                    .setMaxConnTotal(1000)
+                    .build();
+        }
+        try (CloseableHttpResponse response = client.execute(httpGet)) {
             HttpEntity entity = response.getEntity();
             resultHtml = EntityUtils.toString(entity);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        Document doc = Jsoup.parse(resultHtml);
-        Elements trs;
-        try {
-            Elements content = doc.getElementsByClass("GridTableContent");
-            Element table = content.get(0);
-            Element child = table.child(0);
-            trs = child.getElementsByAttribute("bgcolor");
-        } catch (Exception e) {
-            throw new SearchingException(SearchError.COOKIE_HAS_EXPIRED);
+        if (resultHtml.contains("验证码")) {
+            throw new SearchingException(SearchError.REQUEST_TOO_MUCH);
         }
-        SearchResult searchResult = new SearchResult();
-        List<Entry> entries = null;
-        try {
-            entries = commonService.extractPaperEntry(trs);
-        } catch (Exception e) {
-            log.info("解析html页面失败");
-            e.printStackTrace();
-        }
-        searchResult.setEntries(entries);
-        Optional<Element> prev = Optional.ofNullable(doc.getElementById("Page_prev"));
-        prev.ifPresent(e -> {
-            String link = e.attr("href");
-            if (!link.contains(CNKIConsts.REFERER)) {
-                link = CNKIConsts.REFERER + link;
-            }
-            searchResult.setPrevPageLink(link);
-        });
-        Optional<Element> next = Optional.ofNullable(doc.getElementById("Page_next"));
-        next.ifPresent(e -> {
-            String link = e.attr("href");
-            if (!link.contains(CNKIConsts.REFERER)) {
-                link = CNKIConsts.REFERER + link;
-            }
-            searchResult.setNextPageLink(link);
-        });
+        SearchResult searchResult = parsingService.parseHtml(resultHtml);
         return searchResult;
     }
 }

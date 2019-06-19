@@ -7,5 +7,6 @@ package com.csdc.spider.util;
  * @since <pre>2019/6/9</pre>
  */
 public class ConfigConsts {
-public static final String TMP_HTML_LOCATION = "./tmp";
+    public static final String TMP_HTML_LOCATION = "./tmp";
+    public static final String CHROME_DRIVER_LOCATION = "D:\\chromedriver\\chromedriver.exe";
 }

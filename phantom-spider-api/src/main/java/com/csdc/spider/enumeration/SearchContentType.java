@@ -28,4 +28,5 @@ public enum SearchContentType {
     public String getType() {
         return type;
     }
+
 }

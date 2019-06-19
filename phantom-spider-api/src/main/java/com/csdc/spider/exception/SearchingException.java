@@ -16,6 +16,7 @@ public class SearchingException extends RuntimeException {
     }
 
     public SearchingException(SearchError searchError) {
+        super(searchError.toString());
         this.searchError = searchError;
     }
 

@@ -39,8 +39,8 @@ public class PhantomSpiderServiceApplicationTests {
         condition.setSearchAuthorCompanyDegree(DegreeEnum.EXACT);
         LocalDate from = LocalDate.of(2010, 3, 28);
         LocalDate to = LocalDate.of(2018, 9, 9);
-        condition.setPublishDateFrom(from);
-        condition.setPublishDateTo(to);
+//        condition.setPublishDateFrom(from);
+//        condition.setPublishDateTo(to);
         condition.setUpdateTime(UpdateTimeEnum.LAST_YEAR);
         System.out.println();
 //        searchService.advancedSearch(condition).forEach(System.out::println);
@@ -62,8 +62,8 @@ public class PhantomSpiderServiceApplicationTests {
         condition.setSearchAuthorCompanyDegree(DegreeEnum.EXACT);
         LocalDate from = LocalDate.of(2010, 3, 28);
         LocalDate to = LocalDate.of(2018, 9, 9);
-        condition.setPublishDateFrom(from);
-        condition.setPublishDateTo(to);
+//        condition.setPublishDateFrom(from);
+//        condition.setPublishDateTo(to);
         condition.setUpdateTime(UpdateTimeEnum.LAST_YEAR);
         condition.setSource("期刊");
         condition.setSearchFundDegree(DegreeEnum.FUZZY);
@@ -79,9 +79,10 @@ public class PhantomSpiderServiceApplicationTests {
 
     @Test
     public void simpleSearchTest(){
-        SearchResult searchResult = searchService.simpleSearch(null, "机器学习");
+        SearchResult searchResult = searchService.simpleSearch(null, "机器学习",0);
         System.out.println(searchResult.getTotal());
         searchResult.getEntries().forEach(System.out::println);
+        System.out.println(searchResult.getPrevPageLink());
         System.out.println(searchResult.getNextPageLink());
     }
 
@@ -95,15 +96,15 @@ public class PhantomSpiderServiceApplicationTests {
     @Test
     public void getEntriesByPageLinkTest(){
         String link = "";
-        SearchResult result = searchService.getEntriesByPageLink(link);
-        result.getEntries().forEach(System.out::println);
+      //  SearchResult result = searchService.getEntriesByPageLink(link);
+      //  result.getEntries().forEach(System.out::println);
     }
 
     @Test
     public void downloadTest(){
         String url = "http://kns.cnki.net/kns/download.aspx?filename=Fc3UjVZRDOsBzR6BjazoXcSVGN6hFMVlWSjJUNoFVVwk2SiV3UIR1Z5gnbxo2d2d3K6FlNsR0cwI0dStGVmZlR=0TPBRXQo5kahplVP9GWxgFWkFnWYhnYChjdrZWQ05mSqplYjBnWTJlbt1UbnF3ToZmNSlUNnFFTZhHWyBVUyA&tablename=CCNDCOMMIT_DAY";
         url = URL.encode(url);
-        searchService.getDownloadResponse(url);
+//        searchService.getDownloadResponse(url);
     }
 
 }
