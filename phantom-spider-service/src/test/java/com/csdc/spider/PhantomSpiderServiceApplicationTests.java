@@ -3,10 +3,9 @@ package com.csdc.spider;
 import com.csdc.spider.dubbo.cnki.SearchServiceImpl;
 import com.csdc.spider.enumeration.*;
 import com.csdc.spider.model.AdvancedSearchCondition;
-import com.csdc.spider.model.Entry;
 import com.csdc.spider.model.Paper;
 import com.csdc.spider.model.SearchResult;
-import org.apache.dubbo.common.URL;
+//import org.apache.dubbo.common.URL;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +13,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -103,7 +101,7 @@ public class PhantomSpiderServiceApplicationTests {
     @Test
     public void downloadTest(){
         String url = "http://kns.cnki.net/kns/download.aspx?filename=Fc3UjVZRDOsBzR6BjazoXcSVGN6hFMVlWSjJUNoFVVwk2SiV3UIR1Z5gnbxo2d2d3K6FlNsR0cwI0dStGVmZlR=0TPBRXQo5kahplVP9GWxgFWkFnWYhnYChjdrZWQ05mSqplYjBnWTJlbt1UbnF3ToZmNSlUNnFFTZhHWyBVUyA&tablename=CCNDCOMMIT_DAY";
-        url = URL.encode(url);
+//        url = URL.encode(url);
 //        searchService.getDownloadResponse(url);
     }
 

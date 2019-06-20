@@ -44,13 +44,13 @@
             <scope>compile</scope>
         </dependency>
         <!--用于操作zookeeper的客户端，2.6之前是zkClient-->
-        <!-- https://mvnrepository.com/artifact/org.apache.curator/curator-framework -->
+    <!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.apache.curator/curator-framework &ndash;&gt;
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-framework</artifactId>
             <version>${curator.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.curator/curator-recipes -->
+        &lt;!&ndash; https://mvnrepository.com/artifact/org.apache.curator/curator-recipes &ndash;&gt;
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-recipes</artifactId>
@@ -58,7 +58,7 @@
         </dependency>
 
 
-        <!-- https://mvnrepository.com/artifact/org.apache.zookeeper/zookeeper -->
+        &lt;!&ndash; https://mvnrepository.com/artifact/org.apache.zookeeper/zookeeper &ndash;&gt;
         <dependency>
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
@@ -73,7 +73,7 @@
                     <groupId>log4j</groupId>
                 </exclusion>
             </exclusions>
-        </dependency>
+        </dependency>-->
         <!-- https://mvnrepository.com/artifact/org.slf4j/log4j-over-slf4j -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -90,12 +90,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-actuator</artifactId>
         </dependency>
-<!--        &lt;!&ndash; https://mvnrepository.com/artifact/net.sourceforge.htmlunit/htmlunit-core-js &ndash;&gt;-->
-<!--        <dependency>-->
-<!--            <groupId>net.sourceforge.htmlunit</groupId>-->
-<!--            <artifactId>htmlunit-core-js</artifactId>-->
-<!--            <version>2.35.0</version>-->
-<!--        </dependency>-->
+        <!-- https://mvnrepository.com/artifact/net.sourceforge.htmlunit/htmlunit-core-js -->
+        <dependency>
+            <groupId>net.sourceforge.htmlunit</groupId>
+            <artifactId>htmlunit-core-js</artifactId>
+            <version>2.35.0</version>
+        </dependency>
         <dependency>
             <groupId>net.sourceforge.htmlunit</groupId>
             <artifactId>htmlunit</artifactId>
