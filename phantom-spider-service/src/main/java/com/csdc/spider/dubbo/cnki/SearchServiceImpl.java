@@ -37,20 +37,16 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
-import static com.csdc.spider.util.ConfigConsts.TMP_HTML_LOCATION;
 
 /**
  * 知网检索与条件检索服务端实现
@@ -65,11 +61,9 @@ import static com.csdc.spider.util.ConfigConsts.TMP_HTML_LOCATION;
 public class SearchServiceImpl implements SearchService {
 
 
-    private static Lock lock = new ReentrantLock();
     private static ConcurrentHashMap<Integer, CookieStore> cookieCache = new ConcurrentHashMap<>(256);
     private static ConcurrentHashMap<Integer, String> referLink = new ConcurrentHashMap<>(256);
-    private static CloseableHttpClient client = null;
-
+    private CloseableHttpClient client = null;
 
     @Autowired
     CommonService commonService;
@@ -135,34 +129,18 @@ public class SearchServiceImpl implements SearchService {
         final Paper paper = new Paper();
         HttpGet httpGet = new HttpGet(link);
         httpGet.setHeader("Referer", CNKIConsts.REFERER);
-        lock.lock();
-        File directory = new File(TMP_HTML_LOCATION);
-        if (!directory.exists()) {
-            directory.mkdir();
-        }
-        Path path = null;
-        try {
-            path = Files.createTempFile(directory.toPath(), "buffer", "html");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        String html = null;
         try (CloseableHttpClient client = HttpClients.createDefault();
              CloseableHttpResponse response = client.execute(httpGet);
-             FileOutputStream fos = new FileOutputStream(path.toFile())
         ) {
-            response.getEntity().writeTo(fos);
+            HttpEntity entity = response.getEntity();
+            html = EntityUtils.toString(entity);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        Document doc = null;
-        try {
-            doc = Jsoup.parse(path.toFile(), "UTF-8");
-            Files.delete(path);
-        } catch (IOException e) {
-            log.error("解析html失败");
-            e.printStackTrace();
-        }
-        lock.unlock();
+        Document doc = Jsoup.parse(html);
+        //for gc
+        html = null;
         Optional<Elements> orgns = Optional.ofNullable(doc.getElementsByClass("orgn"));
         orgns.map(Elements::text).ifPresent(paper::setOrganization);
         Optional<Element> chDivSummary = Optional.ofNullable(doc.getElementById("ChDivSummary"));
@@ -315,7 +293,22 @@ public class SearchServiceImpl implements SearchService {
         if (resultHtml.contains("验证码")) {
             throw new SearchingException(SearchError.REQUEST_TOO_MUCH);
         }
-        SearchResult searchResult = parsingService.parseHtml(resultHtml);
+        SearchResult searchResult;
+        try {
+            searchResult = parsingService.parseHtml(resultHtml);
+        } catch (SearchingException e) {
+            try {
+                client.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            } finally {
+                client = null;
+            }
+            throw e;
+        } finally {
+            //for gc
+            resultHtml = null;
+        }
         return searchResult;
     }
 }
