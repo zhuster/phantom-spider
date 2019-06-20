@@ -33,7 +33,7 @@ public class ParsingService {
      *
      * @param html
      */
-    public SearchResult parseHtml(String html){
+    public SearchResult parseHtml(String html) {
         Document doc = Jsoup.parse(html);
         SearchResult searchResult = new SearchResult();
         Elements trs;
@@ -85,8 +85,7 @@ public class ParsingService {
         if (StringUtils.isEmpty(rawNum)) {
             throw new SearchingException(SearchError.NO_PAPERS);
         }
-        String truncatedNum = rawNum.substring(4, rawNum.length() - 5);
-        String num = truncatedNum.replaceAll(",", "");
+        String num = rawNum.replaceAll("[^0-9]", "");
         int total = Integer.parseInt(num);
         return total;
     }
