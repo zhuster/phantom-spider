@@ -1,4 +1,4 @@
-# 文档检索爬虫
+# CNKI文档检索爬虫
 * [初级检索](http://www.cnki.net/)
 * [高级检索](http://kns.cnki.net/kns/brief/result.aspx?dbprefix=SCDB&crossDbcodes=CJFQ,CDFD,CMFD,CPFD,IPFD,CCND,CCJD)
 ---
